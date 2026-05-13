@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="odoo-dashboard">odoo dashboard</h1>
+<p>step 1: create model file</p>
+<pre><code>from odoo import models, fields
+
+class SalesInventoryDashboard(models.Model):
+  _name = 'custom.kpi.dashboard'
+  _description = 'Custom KPI dashboard for sales and inventory'
+  
+  total_sales = fields.Float(string='Total Sales')
+  total_order = fields.Integer(string='Total Orders')
+  total_stock = fields.Float(string='Total Stock')
+  
+  def action_refresh_dashboard(self):
+      for record in self:
+          record.total_sales = sum(self.env["sale.order"].search([("state", "=", "sale")]).mapped("amount_total"))
+          record.total_order = self.env["sale.order"].search_count([("state", "=", "sale")])
+          
+          
+          products = self.env["product.product"].search([])
+          record.total_stock = sum(products.mapped("qty_available"))
+            
+</code></pre>
+<p>step 2: create xml file</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;odoo&gt;
+
+    &lt;!-- form view --&gt;
+    &lt;record id="kpi_dashboard_view" model="ir.ui.view"&gt;
+        &lt;field name="name"&gt;kpi.dashboard.view&lt;/field&gt;
+        &lt;field name="model"&gt;custom.kpi.dashboard&lt;/field&gt;
+        &lt;field name="arch" type="xml"&gt;
+            &lt;form string="kpi dashboard"&gt;
+                &lt;div class="kpi-dashboard"&gt;
+                    &lt;div class="kpi-card-container"&gt;
+                        &lt;div class="kpi-card kpi-sales"&gt;
+                            &lt;h2&gt;Total Sales&lt;/h2&gt;
+                            &lt;span class="kpi-value"&gt;
+                                &lt;field name="total_sales"&gt;&lt;/field&gt;
+                            &lt;/span&gt;
+                        &lt;/div&gt;
+                        &lt;div class="kpi-card kpi-orders"&gt;
+                            &lt;h2&gt;Total Orders&lt;/h2&gt;
+                            &lt;span class="kpi-value"&gt;
+                                &lt;field name="total_order"&gt;&lt;/field&gt;
+                            &lt;/span&gt;
+                        &lt;/div&gt;
+                        &lt;div class="kpi-card kpi-stock"&gt;
+                            &lt;h2&gt;Total Stocks&lt;/h2&gt;
+                            &lt;span class="kpi-value"&gt;
+                                &lt;field name="total_stock"&gt;&lt;/field&gt;
+                            &lt;/span&gt;
+                        &lt;/div&gt;
+                        &lt;div class="kpi-refresh-container kpi-card kpi-button"&gt;
+                            &lt;button name="action_refresh_dashboard" string="Refresh Data"
+                                type="object" class="oe_highilight kpi-refresh-button"&gt;&lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/form&gt;
+        &lt;/field&gt;
+    &lt;/record&gt;
+
+    &lt;!-- action --&gt;
+    &lt;record id="kpi_dashbord_action" model="ir.actions.act_window"&gt;
+        &lt;field name="name"&gt;kpi.dashboard.action&lt;/field&gt;
+        &lt;field name="res_model"&gt;custom.kpi.dashboard&lt;/field&gt;
+        &lt;field name="view_mode"&gt;form&lt;/field&gt;
+    &lt;/record&gt;
+&lt;/odoo&gt;
+</code></pre>
+<p>step 3: create scss</p>
+<pre><code>.kpi-card-container{
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    width: 100%;
+}
+
+.kpi-card{
+    padding: 20px;
+    border: 2px solid black;
+    border-radius: 10px;
+    font-size: 20px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    color: white;
+}
+
+h2{
+    font-weight: bold;
+    color: rgb(255, 255, 255);
+}
+
+.kpi-sales{
+    background: linear-gradient(to right, #ff6b6b, #ffc3a0);
+}
+
+.kpi-orders{
+    background: linear-gradient(to right, #148a92, #49e003);
+}
+
+.kpi-stock{
+    background: linear-gradient(to right, #c8ca2a, #c04803);
+}
+
+.kpi-button{
+    background: linear-gradient(to right, #d33535, #990000);
+}
+</code></pre>
+</div>
+</body>
+
+</html>
