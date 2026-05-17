@@ -1,0 +1,491 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="dashboard-creation-practice-1">dashboard creation practice 1</h1>
+<p>step 1: create action xml file</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;odoo&gt;
+
+    &lt;record id="action_sales_dashboard" model="ir.actions.client"&gt;
+
+        &lt;field name="name"&gt;Sales Dashboard&lt;/field&gt;
+
+        &lt;field name="tag"&gt;sales_dashboard&lt;/field&gt;
+
+    &lt;/record&gt;
+
+&lt;/odoo&gt;
+</code></pre>
+<p>step 2: create menu and add action in menu</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;odoo&gt;
+    &lt;menuitem id="menu_product_inquiry_root" name="practice"/&gt;
+    &lt;menuitem id="menu_product_inquiry" name="Product Inquiries" parent="menu_product_inquiry_root"/&gt;
+    &lt;menuitem id="menu_1" name="Inquiries" parent="menu_product_inquiry" action="action_product_inquiry"/&gt;
+
+    &lt;menuitem id="kpi_dashboard" name="Kpi Dashboard" parent="menu_product_inquiry_root" action="kpi_dashbord_action"/&gt;
+    &lt;menuitem id="menu_sales_dashboard" name="Sales Dashboard" parent="menu_product_inquiry_root" action="action_sales_dashboard"/&gt;
+    &lt;menuitem id="menu_dashboard" name="dashboard" parent="menu_product_inquiry_root" action="custom_dashboard"/&gt;
+&lt;/odoo&gt;
+</code></pre>
+<p>step 3: create component<br>
+static/src/components/custom_dashboard.js</p>
+<pre><code>/** @odoo-module **/
+
+import { registry } from "@web/core/registry";
+import { Component, useState, onWillStart } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
+import { Learn } from "./chart_dashboard/chart_dashboard";
+
+export class Dashboard extends Component {
+    setup() {
+
+        this.state = useState({
+            total_quotation: 0,
+            total_order: 0,
+            total_product:0,
+            total_purchase_rfq:0,
+            total_purchase_order:0
+        });
+
+        this.orm = useService("orm");
+
+        onWillStart(async () =&gt; {
+            await this.getQuotation();
+            await this.getOrders()
+            await this.get_total_product()
+            await this.get_total_purchase_rfq()
+            await this.get_total_purchase_order()
+        });
+    }
+
+    async getQuotation() {
+
+        const data = await this.orm.searchCount(
+            "sale.order",
+            [['state', 'in', ['sent', 'draft']]]
+        );
+
+        this.state.total_quotation = data;
+        console.log(this.state.total_quotation)
+    }
+
+    async getOrders(){
+        const data = await this.orm.searchCount("sale.order", [["state", '=', 'sale']])
+        this.state.total_order = data
+    }
+
+    async get_total_product(){
+        const data = await this.orm.searchCount("product.template", [['qty_available', '&gt;', 0]])
+        this.state.total_product = data
+    }
+
+    async get_total_purchase_rfq(){
+        const data = await this.orm.searchCount("purchase.order", [['state', 'in', ['draft', 'sent']]]);
+        this.state.total_purchase_rfq = data
+    }
+
+    async get_total_purchase_order(){
+        const data = await this.orm.searchCount("purchase.order", [["state", "in", ["purchase", "done"]]])
+        this.state.total_purchase_order = data
+    }
+}
+
+Dashboard.template = "practice_module.custom_dashboard_view";
+Dashboard.components = {
+    Learn
+}
+
+registry.category("actions").add(
+    "custom_dashboard",
+    Dashboard
+);
+</code></pre>
+<p>step 4: static/src/components/custom_dashboard.xml</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;templates xml:space="preserve"&gt;
+
+    &lt;t t-name="practice_module.custom_dashboard_view" owl="1"&gt;
+        &lt;div style="height: 100%; overflow-y: auto;"&gt;
+            &lt;!-- sales --&gt;
+            &lt;h1 class="text-center mt-5 fw-bold display-3"&gt;Sales&lt;/h1&gt;
+            &lt;div class="d-flex justify-content-center align-items-center"&gt;
+                &lt;div class="m-2 d-flex flex-column justify-content-center align-items-center"
+                    style="
+                        height:120px;
+                        width:300px;
+                        color:white;
+                        border-radius:12px;
+                        background: linear-gradient(135deg, #ff4b1f, #ff9068);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    "&gt;
+
+                        &lt;!-- Title --&gt;
+                    &lt;div style="font-size: 20px; opacity:0.9; letter-spacing:1px; font-weight:bold;"&gt;
+                        Total Quotation
+                    &lt;/div&gt;
+
+                        &lt;!-- Value --&gt;
+                    &lt;div style="font-size:34px; font-weight:bold; margin-top:5px;"&gt;
+                        &lt;t t-esc="state.total_quotation"/&gt;
+                    &lt;/div&gt;
+
+                &lt;/div&gt;
+
+                &lt;div class="m-2 d-flex flex-column justify-content-center align-items-center"
+                    style="
+                        height:120px;
+                        width:300px;
+                        color:white;
+                        border-radius:12px;
+                        background: linear-gradient(135deg, #11998e, #38ef7d);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    "&gt;
+
+                        &lt;!-- Title --&gt;
+                    &lt;div style="font-size: 20px; opacity:0.9; letter-spacing:1px; font-weight:bold;"&gt;
+                        Total Orders
+                    &lt;/div&gt;
+
+                        &lt;!-- Value --&gt;
+                    &lt;div style="font-size:34px; font-weight:bold; margin-top:5px;"&gt;
+                        &lt;t t-esc="state.total_order"/&gt;
+                    &lt;/div&gt;
+
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+
+                &lt;!-- Inventory --&gt;
+            &lt;h1 class="text-center mt-5 fw-bold display-3"&gt;Inventory&lt;/h1&gt;
+            &lt;div class="d-flex justify-content-center align-items-center"&gt;
+                &lt;div class="m-2 d-flex flex-column justify-content-center align-items-center"
+                    style="
+                        height:120px;
+                        width:300px;
+                        color:white;
+                        border-radius:12px;
+                        background: linear-gradient(135deg, #ff4b1f, #ff9068);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    "&gt;
+
+                        &lt;!-- Title --&gt;
+                    &lt;div style="font-size: 20px; opacity:0.9; letter-spacing:1px; font-weight:bold;"&gt;
+                        Total Product
+                    &lt;/div&gt;
+
+                        &lt;!-- Value --&gt;
+                    &lt;div style="font-size:34px; font-weight:bold; margin-top:5px;"&gt;
+                        &lt;t t-esc="state.total_product"/&gt;
+                    &lt;/div&gt;
+
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+
+                &lt;!-- Purchase --&gt;
+            &lt;h1 class="text-center mt-5 fw-bold display-3"&gt;Purchase&lt;/h1&gt;
+            &lt;div class="d-flex justify-content-center align-items-center"&gt;
+                &lt;div class="m-2 d-flex flex-column justify-content-center align-items-center"
+                    style="
+                        height:150px;
+                        width:300px;
+                        color:white;
+                        border-radius:12px;
+                        background: linear-gradient(135deg, #ff4b1f, #ff9068);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    "&gt;
+
+                        &lt;!-- Title --&gt;
+                    &lt;div style="font-size: 20px; opacity:0.9; letter-spacing:1px; font-weight:bold; text-align:center;"&gt;
+                        Total Requests for Quotation
+                    &lt;/div&gt;
+
+                        &lt;!-- Value --&gt;
+                    &lt;div style="font-size:34px; font-weight:bold; margin-top:5px;"&gt;
+                        &lt;t t-esc="state.total_purchase_rfq"/&gt;
+                    &lt;/div&gt;
+
+                &lt;/div&gt;
+
+                &lt;div class="m-2 d-flex flex-column justify-content-center align-items-center"
+                    style="
+                        height:150px;
+                        width:300px;
+                        color:white;
+                        border-radius:12px;
+                        background: linear-gradient(135deg, #11998e, #38ef7d);
+                        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    "&gt;
+
+                        &lt;!-- Title --&gt;
+                    &lt;div style="font-size: 20px; opacity:0.9; letter-spacing:1px; font-weight:bold;"&gt;
+                        Total Purchase Orders
+                    &lt;/div&gt;
+
+                        &lt;!-- Value --&gt;
+                    &lt;div style="font-size:34px; font-weight:bold; margin-top:5px;"&gt;
+                        &lt;t t-esc="state.total_purchase_order"/&gt;
+                    &lt;/div&gt;
+
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+
+            &lt;!-- graph --&gt;
+            &lt;div style="height:400px; width:100%;"&gt;
+                &lt;Learn /&gt;
+            &lt;/div&gt;
+
+        &lt;/div&gt;
+        
+    &lt;/t&gt;
+&lt;/templates&gt;
+
+</code></pre>
+<p>Now i want to add chart from another component<br>
+step 1: static/src/components/chart_dashboard/chart_dashboard.js</p>
+<pre><code>/** @odoo-module **/
+
+// OWL framework থেকে প্রয়োজনীয় functions import করা হয়েছে
+import {
+    Component,      // Base class for all OWL components
+    onWillStart,    // Component mount হওয়ার আগে async কাজ করার জন্য
+    useRef,         // DOM element reference নেওয়ার জন্য
+    onMounted,      // Component mount হওয়ার পরে কাজ করার জন্য
+    useState        // Reactive state manage করার জন্য
+} from "@odoo/owl";
+
+import { useService } from "@web/core/utils/hooks"; // Odoo services (orm, rpc) use করার জন্য
+import { loadJS } from "@web/core/assets";          // External JS file load করার জন্য
+
+export class Learn extends Component {
+
+    setup() {
+        // ORM service inject করা হয়েছে, database query করার জন্য
+        this.orm = useService("orm");
+
+        // Canvas element এর reference নেওয়া হয়েছে, Chart.js এটা ব্যবহার করবে
+        this.chartRef = useRef("chart");
+
+        // Reactive state declare করা হয়েছে
+        // এই values change হলে UI automatically update হবে
+        this.state = useState({
+            quotation: 0,   // Total quotation count
+            sale_order: 0,  // Total sale order count
+        });
+
+        // Component render হওয়ার আগে এই block execute হবে
+        onWillStart(async () =&gt; {
+
+            // Chart.js library load করা হয়েছে CDN থেকে
+            await loadJS(
+                "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"
+            );
+
+            // Chart এর উপরে percentage দেখানোর জন্য datalabels plugin load করা হয়েছে
+            await loadJS(
+                "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"
+            );
+
+            // Database থেকে sale data fetch করা হয়েছে
+            await this.getSaleData();
+        });
+
+        // Component DOM এ mount হওয়ার পরে chart render করা হবে
+        // onWillStart এর পরে execute হয়, তাই data আগেই ready থাকে
+        onMounted(() =&gt; {
+            this.renderChart();
+        });
+    }
+
+    // Sale order data database থেকে fetch করার method
+    async getSaleData() {
+
+        // Draft এবং Sent state এর sale order গুলো count করা হয়েছে (Quotations)
+        const quotationCount = await this.orm.searchCount(
+            "sale.order",
+            [["state", "in", ["draft", "sent"]]]
+        );
+
+        // Sale এবং Done state এর sale order গুলো count করা হয়েছে (Confirmed Orders)
+        const saleCount = await this.orm.searchCount(
+            "sale.order",
+            [["state", "in", ["sale", "done"]]]
+        );
+
+        // Fetched data state এ save করা হয়েছে
+        this.state.quotation = quotationCount;
+        this.state.sale_order = saleCount;
+    }
+
+    // Chart render করার method
+    renderChart() {
+        new Chart(this.chartRef.el, {
+
+            // Doughnut type chart ব্যবহার করা হয়েছে
+            type: "doughnut",
+
+            data: {
+                // Chart এর labels
+                labels: ["Quotations", "Sale Orders"],
+
+                datasets: [
+                    {
+                        label: "Sales Overview",
+
+                        // State থেকে real data ব্যবহার করা হয়েছে
+                        data: [this.state.quotation, this.state.sale_order],
+
+                        // প্রতিটা slice এর color
+                        // Quotation = Orange, Sale Order = Green
+                        backgroundColor: [
+                            "#f05811",  // Orange - Quotations
+                            "#11998e",  // Green  - Sale Orders
+                        ]
+                    }
+                ]
+            },
+
+            options: {
+                responsive: true,           // Container size অনুযায়ী chart resize হবে
+                maintainAspectRatio: false, // Parent div এর height অনুযায়ী chart fit হবে
+
+                plugins: {
+                    // Chart এর উপরে legend দেখানোর জন্য
+                    legend: {
+                        position: "top"
+                    },
+
+                    // Hover করলে tooltip এ percentage দেখাবে
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                // Total value calculate করা হয়েছে
+                                const total = context.dataset.data.reduce((a, b) =&gt; a + b, 0);
+                                const value = context.parsed;
+
+                                // Percentage calculate করা হয়েছে
+                                // total 0 হলে 0% দেখাবে (divide by zero এড়ানোর জন্য)
+                                const percentage = total &gt; 0 ? ((value / total) * 100).toFixed(1) : 0;
+
+                                // Example: "Quotations: 5 (62.5%)"
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    },
+
+                    // Chart এর slice এর উপরে সবসময় percentage দেখানোর জন্য
+                    datalabels: {
+                        color: "#fff",      // সাদা রঙে দেখাবে
+                        font: {
+                            size: 16,       // Font size
+                            weight: "bold"  // Bold text
+                        },
+                        formatter: function(value, context) {
+                            // Total value calculate করা হয়েছে
+                            const total = context.dataset.data.reduce((a, b) =&gt; a + b, 0);
+
+                            // Percentage calculate করা হয়েছে (1 decimal point)
+                            const percentage = total &gt; 0 ? ((value / total) * 100).toFixed(1) : 0;
+
+                            // Example: "62.5%"
+                            return percentage + "%";
+                        }
+                    }
+                }
+            },
+
+            // ChartDataLabels plugin globally register করা হয়েছে
+            // এটা ছাড়া datalabels কাজ করবে না
+            plugins: [ChartDataLabels]
+        });
+    }
+}
+
+// এই component এর XML template এর নাম
+Learn.template = "practice_module.ChartUse";
+
+</code></pre>
+<p>step 2: static/src/component/chart_dashboard/chart_dashboard.xml</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;templates xml:space="preserve"&gt;
+
+    &lt;t t-name="practice_module.ChartUse" owl="1"&gt;
+        &lt;h1 class="text-center mt-5"&gt;Total Calculation&lt;/h1&gt;
+        &lt;canvas t-ref="chart" style="width:100%; height:100%;"&gt;&lt;/canvas&gt;
+    &lt;/t&gt;
+&lt;/templates&gt;
+</code></pre>
+<p><a href="http://manifest.py">manifest.py</a></p>
+<pre><code>{
+    'name': 'Module Practice',
+    'version': '19.0.1.0.0',
+    'category': 'Learning',
+    'summary': 'A short summary of the module',
+    'description': """
+        A longer description of what this module does.
+    """,
+    'author': 'Saiful Islam Shawon',
+    'license': 'LGPL-3',
+
+    'depends': [
+        'base', 'website','product','sale', 'stock', 'board'
+        # 'sale', 'purchase', 'account', etc.
+    ],
+
+    'data': [
+        # Security
+        'security/ir.model.access.csv',
+
+        # actions, views, and menus
+        'views/product_inquiry.xml',
+        'views/dashboard_view.xml',
+        'views/sale_dashboard_view.xml',
+        'views/custom_dashboard.xml',
+        
+        # api
+        'views/data_sent_template.xml',
+        'views/practice_template.xml',
+        'views/template.xml',
+        
+        # menu
+        'views/menu.xml',
+    ],
+    
+    'assets': {
+        'web.assets_backend': [
+            
+            # custom dashboard
+            'practice_module/static/src/components/custom_dashboard.js',
+            'practice_module/static/src/components/custom_dashboared_view.xml',
+            'practice_module/static/src/components/chart_dashboard/chart_dashboard.js',
+            'practice_module/static/src/components/chart_dashboard/chart_dashboard.xml'
+        ],
+    },
+
+    'demo': [
+        # 'demo/demo_data.xml',
+    ],
+
+    'installable': True,
+    'auto_install': False,
+    'application': False,
+}
+
+</code></pre>
+</div>
+</body>
+
+</html>
