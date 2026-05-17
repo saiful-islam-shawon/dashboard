@@ -1,0 +1,345 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="odoo-dashboard">odoo dashboard</h1>
+<p><strong>odoo sales dashboard creation</strong><br>
+step 1: create action xml file</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;odoo&gt;
+
+    &lt;record id="action_sales_dashboard" model="ir.actions.client"&gt;
+
+        &lt;field name="name"&gt;Sales Dashboard&lt;/field&gt;
+
+        &lt;field name="tag"&gt;sales_dashboard&lt;/field&gt;
+
+    &lt;/record&gt;
+
+&lt;/odoo&gt;
+</code></pre>
+<p>step 2: create component<br>
+static/src/components/sales_dashboard.xml</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;templates xml:space="preserve"&gt;
+
+    &lt;t t-name="practice_module.OwlSalesDashboard" owl="1"&gt;
+
+        &lt;div class="vh-100 overflow-auto bg-muted"&gt;
+            &lt;div class="row m-3"&gt;
+                &lt;div class="col-lg-7"&gt;
+                    &lt;div class="row"&gt;
+                        &lt;div class="col m-0 p-0"&gt;
+                            &lt;div class="shadow-small border m-2 p-4 bg-white"&gt;
+                                &lt;div class="d-flex align-items-center justify-content-between"&gt;
+                                    &lt;h1 class="text-primary fw-bold"&gt;Custom Sales Dashboard&lt;/h1&gt;
+                                    &lt;div&gt;
+                                        &lt;select class="form-select" t-model="state.period" t-on-change="onChangePeriod"&gt;
+                                            &lt;option value="0"&gt;Select Period&lt;/option&gt;
+                                            &lt;option value="7"&gt;Last 7 days&lt;/option&gt;
+                                            &lt;option value="30"&gt;Last 30 days&lt;/option&gt;
+                                            &lt;option value="90"&gt;Last 90 days&lt;/option&gt;
+                                            &lt;option value="365"&gt;Last 365 days&lt;/option&gt;
+                                        &lt;/select&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class="row"&gt;
+                        &lt;KpiCard name="'Quotation'" value="state.quotation.value" percentage="state.quotation.percentage"/&gt;
+                        &lt;KpiCard name="'Orders'" value="'20'" percentage="'20'"/&gt;
+                        &lt;KpiCard name="'Revenues'" value="'350k'" percentage="'40'"/&gt;
+                        &lt;KpiCard name="'Average Order'" value="'45k'" percentage="'70'"/&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="col-lg-5"&gt;
+                    &lt;div class="row"&gt;
+                        &lt;div class="col m-0 p-0"&gt;
+                            &lt;div class="shadow-sm border m-2 p-4 bg-white"&gt;
+                                &lt;div class="d-flex align-items-center justify-content-between"&gt;
+                                    &lt;h3 class="text-primary fw-bold"&gt;Monthly Sales&lt;/h3&gt;
+                                    &lt;div class="px-3 py-1 bg-primary cursor-pointer"&gt;
+                                        &lt;span class="fa fa-arrow-right text-white"&gt;&lt;/span&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="row"&gt;
+                        &lt;div class="col m-0 p-0"&gt;
+                            &lt;div class="shadow-sm border m-2 p-4 bg-white"&gt;
+                                &lt;div class="d-flex align-items-center justify-content-between"&gt;
+                                    &lt;h3 class="text-primary fw-bold"&gt;Partner Order&lt;/h3&gt;
+                                    &lt;div class="px-3 py-1 bg-primary cursor-pointer"&gt;
+                                        &lt;span class="fa fa-arrow-right text-white"&gt;&lt;/span&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;ChartRender&gt;&lt;/ChartRender&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+    &lt;/t&gt;
+
+&lt;/templates&gt;
+</code></pre>
+<p>step 3: static/src/components/sales_dashboard.js</p>
+<pre><code>/** @odoo-module **/
+
+const { DateTime } = luxon;
+import { registry } from "@web/core/registry";
+import { Component, useState, onWillStart } from "@odoo/owl";
+
+import { KpiCard } from "./kpi_card/kpi_card";
+import { ChartRender } from "./chart_render/chart_render";
+
+import {useService} from "@web/core/utils/hooks"
+
+export class OwlSalesDashboard extends Component {
+    setup(){
+        this.state = useState({
+            quotation: {
+                value:10,
+                percentage:20
+            },
+            period:90,
+            date:null
+        })
+
+        this.orm = useService("orm")
+
+        onWillStart(async ()=&gt;{
+            this.getDate()
+            await this.getQuotation()
+        })
+    }
+
+    async onChangePeriod(){
+        
+        this.getDate()
+        await this.getQuotation()
+    }
+
+    getDate(){
+        const date = DateTime.now()
+        .minus({ days: this.state.period })
+        .toUTC()
+        .toFormat("yyyy-MM-dd HH:mm:ss");
+
+        this.state.date = date;
+    }
+
+    async getQuotation(){
+        const data = await this.orm.searchCount("sale.order", [['state', 'in', ['sent', 'draft']], ['create_date', '&gt;', this.state.date]])
+        this.state.quotation.value = data 
+    }
+}
+
+OwlSalesDashboard.template =
+    "practice_module.OwlSalesDashboard";
+
+OwlSalesDashboard.components = {
+    KpiCard,
+    ChartRender,
+};
+
+registry.category("actions").add(
+    "sales_dashboard",
+    OwlSalesDashboard
+);
+</code></pre>
+<p>create kpi card<br>
+static/src/components/kpi_card/kpi_card.xml</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;template&gt;
+    &lt;t t-name="practice_module.KpiCard" owl="1"&gt;
+        &lt;div class="col-lg-3 m-0 p-0"&gt;
+            &lt;div class="shadow-sm border p-4 m-2 bg-white text-center"&gt;
+                &lt;div class="h1 fw-bold text-dark" t-esc="props.value"&gt;&lt;/div&gt;
+                &lt;div class="h3 text-muted"&gt;&lt;span t-esc="props.name"&gt;&lt;/span&gt;&lt;/div&gt;
+                &lt;div class="h3 mt-5"&gt;
+                    &lt;span t-attf-class="text-#{props.value &gt; 0 ? 'success':'danger'}"&gt;
+                        &lt;span t-attf-class="fa fa-arrow-#{props.value &gt; 0 ? 'up' : 'down'}"&gt;&lt;/span&gt;
+                        &lt;span t-esc="props.percentage"&gt;%&lt;/span&gt;
+                        &lt;span&gt;Since last Period&lt;/span&gt;
+                    &lt;/span&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/t&gt;
+&lt;/template&gt;
+</code></pre>
+<p>static/src/components/kpi_card/kpi_card.xml</p>
+<pre><code>/** @odoo-module **/
+
+import { Component } from "@odoo/owl";
+
+export class KpiCard extends Component {
+    static template = "practice_module.KpiCard";
+}
+</code></pre>
+<p>create chart<br>
+static/src/components/chart_render/chart_render.xml</p>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;templates xml:space="preserve"&gt;
+
+    &lt;t t-name="practice_module.ChartRender" owl="1"&gt;
+        &lt;canvas t-ref="chart"&gt;&lt;/canvas&gt;
+    &lt;/t&gt;
+&lt;/templates&gt;
+</code></pre>
+<p>static/src/components/chart_render/chart_render.js</p>
+<pre><code>/** @odoo-module **/
+
+import {
+    Component,
+    onWillStart,
+    useRef,
+    onMounted,
+} from "@odoo/owl";
+
+import { loadJS } from "@web/core/assets";
+
+export class ChartRender extends Component {
+
+    setup() {
+
+        this.chartRef = useRef("chart");
+
+        onWillStart(async () =&gt; {
+
+            await loadJS(
+                "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"
+            );
+
+        });
+
+        onMounted(() =&gt; {
+
+            const data = [
+                { year: 2010, count: 10 },
+                { year: 2011, count: 20 },
+                { year: 2012, count: 15 },
+                { year: 2013, count: 25 },
+                { year: 2014, count: 22 },
+                { year: 2015, count: 30 },
+                { year: 2016, count: 28 },
+                { year: 2017, count: 28 },
+            ];
+
+            new Chart(this.chartRef.el, {
+                type: "doughnut",
+                data: {
+                    labels: data.map(row =&gt; row.year),
+                    datasets: [
+                        {
+                            label: "Acquisitions by year",
+                            data: data.map(row =&gt; row.count),
+                            backgroundColor: [
+                                "#ca0303",
+                                "#f05811",
+                                "#ffce56",
+                                "#4bc0c0",
+                                "#9966ff",
+                                "#ff9f40",
+                                "#66ff66",
+                                "#000000"
+                            ]
+                        }
+                    ]
+                }
+            });
+
+        });
+
+    }
+}
+
+ChartRender.template =
+    "practice_module.ChartRender";
+</code></pre>
+<p><a href="http://manifest.py">manifest.py</a></p>
+<pre><code>{
+    'name': 'Module Practice',
+    'version': '19.0.1.0.0',
+    'category': 'Learning',
+    'summary': 'A short summary of the module',
+    'description': """
+        A longer description of what this module does.
+    """,
+    'author': 'Saiful Islam Shawon',
+    'license': 'LGPL-3',
+
+    'depends': [
+        'base', 'website','product','sale', 'stock', 'board'
+        # 'sale', 'purchase', 'account', etc.
+    ],
+
+    'data': [
+        # Security
+        'security/ir.model.access.csv',
+
+        # actions, views, and menus
+        'views/product_inquiry.xml',
+        'views/dashboard_view.xml',
+        'views/sale_dashboard_view.xml',
+        'views/custom_dashboard.xml',
+        
+        # api
+        'views/data_sent_template.xml',
+        'views/practice_template.xml',
+        'views/template.xml',
+        
+        # menu
+        'views/menu.xml',
+    ],
+    
+    'assets': {
+        'web.assets_backend': [
+            'practice_module/static/src/scss/dashboard.scss',
+            
+            # js
+            'practice_module/static/src/js/sashboard.js',
+            
+            # component
+            'practice_module/static/src/components/kpi_card/kpi_card.js',
+            'practice_module/static/src/components/kpi_card/kpi_card.xml',
+            
+            'practice_module/static/src/components/chart_render/chart_render.js',
+            'practice_module/static/src/components/chart_render/chart_render.xml',
+            
+            'practice_module/static/src/components/sale_dashboard.js',
+            'practice_module/static/src/components/sale_dashboard.xml',
+            
+        ],
+    },
+
+    'demo': [
+        # 'demo/demo_data.xml',
+    ],
+
+    'installable': True,
+    'auto_install': False,
+    'application': False,
+}
+</code></pre>
+</div>
+</body>
+
+</html>
