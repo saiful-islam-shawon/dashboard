@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="data-sent-from-api-to-dashboard">data sent from api to dashboard</h1>
+<p>step 1: create controler<br>
+controler/controler.py</p>
+<pre><code>from odoo import http
+from odoo.http import request
+
+class PracticeControler(http.Controller):
+  @http.route('/api/products/', auth='public', type='json', methods=['POST'])
+  def get_product(self):
+      products = request.env['product.template'].sudo().search_count([])
+      return {'products': products}
+</code></pre>
+<p>step: static/src/components/dashboard.js</p>
+<pre><code>/** @odoo-module **/
+
+import { registry } from "@web/core/registry";
+import { Component, useState, onWillStart } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
+
+export class Dashboard extends Component {
+    setup() {
+
+        this.state = useState({
+            products: 0
+        });
+
+        onWillStart(async () =&gt; {
+            // api
+            await this.get_products_from_api()
+        });
+    }
+
+    async get_products_from_api() {
+        const result = await fetch('/api/products/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'call',
+                params: {}
+            })
+        });
+        
+        const data = await result.json();
+        this.state.products = data.result.products;
+        console.log(this.state.products)
+    }
+}
+
+Dashboard.template = "practice_module.custom_dashboard_view";
+
+registry.category("actions").add(
+    "custom_dashboard",
+    Dashboard
+);
+</code></pre>
+<p>postman aa data dita hoba</p>
+<pre><code>{
+    "method": "call",
+    "params": {
+        "category": "shawon",
+        "min_price": 100
+    }
+}
+</code></pre>
+<p>tahola result asba</p>
+<pre><code>{
+    "jsonrpc": "2.0",
+    "id": null,
+    "result": {
+        "products": 4,
+        "category": "shawon",
+        "min_price": 100
+    }
+}
+</code></pre>
+<h1 id="data-sent-from-dashboard-to-api">data sent from dashboard to api</h1>
+<p>step 1: create controler<br>
+controler/controler.py</p>
+<pre><code>@http.route('/api/products/', auth='public', type='json', methods=['POST'])
+    def get_product(self, **kwargs):
+        # dashboard থেকে আসা data
+        category = kwargs.get('category', None) 
+        min_price = kwargs.get('min_price', 0)
+        
+        print(category, min_price)
+        
+        # dashboard aa data sent
+        products = request.env['product.template'].sudo().search_count([])
+        return {'products': products, 'category': category, 'min_price': min_price}
+</code></pre>
+<p>step 2: static/src/components/dashboard.js</p>
+<pre><code>
+
+# another code
+Controller বানাও:
+</code></pre>
+<p>from odoo import http<br>
+from odoo.http import request<br>
+import json</p>
+<p>class ProductApiController(http.Controller):</p>
+<pre><code>@http.route('/api/products', auth='user', type='json', methods=['POST'])
+def get_products(self):
+    products = request.env['product.template'].sudo().search_read(
+        [],
+        ['id', 'name', 'qty_available', 'list_price']
+    )
+    return {'products': products, 'total': len(products)}
+</code></pre>
+<pre><code>JavaScript-এ fetch করো:
+</code></pre>
+<p>async get_products_from_api() {<br>
+const result = await fetch(’/api/products’, {<br>
+method: ‘POST’,<br>
+headers: {<br>
+‘Content-Type’: ‘application/json’,<br>
+},<br>
+body: JSON.stringify({<br>
+jsonrpc: ‘2.0’,<br>
+method: ‘call’,<br>
+params: {}<br>
+})<br>
+});</p>
+<pre><code>const data = await result.json();
+this.state.products = data.result.products;
+this.state.total_product = data.result.total;
+</code></pre>
+<p>}</p>
+<pre><code>তোমার State আপডেট করো:
+</code></pre>
+<p>this.state = useState({<br>
+total_quotation: 0,<br>
+total_order: 0,<br>
+total_product: 0,<br>
+total_purchase_rfq: 0,<br>
+total_purchase_order: 0,<br>
+products: [],          // ✅ product list এর জন্য<br>
+});</p>
+<pre><code>onWillStart-এ call করো:
+</code></pre>
+<p>onWillStart(async () =&gt; {<br>
+await this.getQuotation();<br>
+await this.getOrders();<br>
+await this.get_total_product();       // ✅ ORM দিয়ে<br>
+// অথবা<br>
+await this.get_products_from_api();   // ✅ API দিয়ে<br>
+await this.get_total_purchase_rfq();<br>
+await this.get_total_purchase_order();<br>
+});</p>
+<pre><code>
+</code></pre>
+</div>
+</body>
+
+</html>
